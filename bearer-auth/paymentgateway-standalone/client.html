@@ -1,0 +1,474 @@
+<HTML>
+<head>
+	<script>
+
+
+		function getHeadersForCurl() {
+			var header1include = document.getElementById("header1include").checked;
+			var header2include = document.getElementById("header2include").checked;
+			var header3include = document.getElementById("header3include").checked;
+			var header4include = document.getElementById("header4include").checked;
+
+			var header1key = document.getElementById("header1key").value;
+			var header2key = document.getElementById("header2key").value;
+			var header3key = document.getElementById("header3key").value;
+			var header4key = document.getElementById("header4key").value;
+
+			var header1value = document.getElementById("header1value").value;
+			var header2value = document.getElementById("header2value").value;
+			var header3value = document.getElementById("header3value").value;
+			var header4value = document.getElementById("header4value").value;
+
+			var includeStatus = document.getElementById("includeStatus").checked;
+
+			var userPassInclude = document.getElementById("userPassInclude").checked;
+			var userPassU = document.getElementById("userPassU").value;
+			var userPassP = document.getElementById("userPassP").value;
+
+			var result = " ";
+			if (header1include === true) {
+				result += '-H "' + header1key + ': ' + header1value + '" ';
+			}
+
+			if (header2include === true) {
+				result += '-H "' + header2key + ': ' + header2value + '" ';
+			}
+
+			if (header3include === true) {
+				result += '-H "' + header3key + ': ' + header3value + '" ';
+			}
+
+			if (header4include === true) {
+				result += '-H "' + header4key + ': ' + header4value + '" ';
+			}
+
+			if (includeStatus === true) {
+				result += '-i ';
+			}
+
+			if (userPassInclude === true) {
+				//result += '-u ' + userPassU + ":" + userPassP + ' '
+
+				var base64up = btoa(userPassU + ":" + userPassP);
+				result += '-H "Authorization: Basic ' + base64up + '" ';
+			}
+
+			return result
+		}
+
+
+		function rootUrl() {
+			var value= document.getElementById("url").value;
+			return value;
+		}
+
+		function buildData(onlyNonBlanks) {
+			var amount = document.getElementById("newAmount").value;
+			var country = document.getElementById("newCountry").value;
+			var currency = document.getElementById("newCurrency").value;
+			var orderId = document.getElementById("newOrderId").value;
+			var taxCode = document.getElementById("newTaxCode").value;
+			var taxRate = document.getElementById("newTaxRate").value;
+			var type = document.getElementById("newType").value;
+
+			if (!onlyNonBlanks) {
+				var data = {"amount" : +amount,
+					"country" : country,
+					"currency":currency,
+					"orderId":orderId,
+					"taxCode":+taxCode,
+					"taxRate":+taxRate,
+					"type":type};
+
+				return data;
+			}
+			else {
+				var data = {};
+				if (amount != "") {
+					data = {"amount":+amount, ...data};
+				}
+				if (country != "") {
+					data = {"country":country, ...data};
+				}
+				if (currency != "") {
+					data = {"currency":currency, ...data};
+				}
+				if (orderId != "") {
+					data = {"orderId":orderId, ...data};
+				}
+				if (taxCode != "") {
+					data = {"taxCode":+taxCode, ...data};
+				}
+				if (taxRate != "") {
+					data = {"taxRate":+taxRate, ...data};
+				}
+				if (type != "") {
+					data = {"type":type, ...data};
+				}
+
+				return data;
+
+			}
+		}
+
+
+		function generateAPICommand(sendToServer) {
+			var action = document.getElementById("action").value;
+			var curlBase = 'CURL ' + getHeadersForCurl();
+			var curl = document.getElementById("curl");
+
+
+			if(action==="GET-ID") {
+				var transactionId =  document.getElementById("transactionId").value;
+				var sendto =  rootUrl() + "/" + transactionId
+				var curlCommand = curlBase + sendto;
+				curl.value = curlCommand;
+				if(sendToServer) {
+					sendRestRequest("GET", sendto, null);
+				}
+			}
+
+			if(action==="GET-ORDER") {
+				var orderId =  document.getElementById("orderId").value;
+				var sendto =  rootUrl() + "?order=" + orderId
+				var curlCommand = curlBase + sendto;
+				curl.value = curlCommand;
+				if(sendToServer) {
+					sendRestRequest("GET", sendto, null);
+				}
+			}
+
+			if(action==="GETALL") {
+				curl.value = curlBase + rootUrl();
+				if(sendToServer) {
+					sendRestRequest("GET", rootUrl(), null);
+				}
+			}
+
+			if(action==="GET-COUNTRY") {
+				var country =  document.getElementById("country").value;
+				var sendto =  rootUrl() + "?country=" + country
+				var curlCommand = curlBase + sendto;
+				curl.value = curlCommand;
+				if(sendToServer) {
+					sendRestRequest("GET", sendto, null);
+				}
+			}
+
+			if(action==="PUT") {
+				var transactionId =  document.getElementById("transactionId").value;
+
+				var data = buildData(true);
+				var sendto = ' -H "Content-Type: application/json" ' +
+						'-d "' + JSON.stringify(data).replaceAll('"', '\\"') + '" ' + rootUrl()+"/"+transactionId;
+				curl.value = curlBase + " -X PUT " + sendto;
+				if(sendToServer) {
+					sendRestRequest("PUT", rootUrl() + "/" + transactionId, JSON.stringify(data));
+				}
+			}
+
+			if(action==="POST") {
+				var data = buildData(true);
+				var sendto = ' -H "Content-Type: application/json" ' +
+						'-d "' + JSON.stringify(data).replaceAll('"', '\\"') + '" ' + rootUrl();
+				curl.value = curlBase + " -X PUT " + sendto;
+				if(sendToServer) {
+					sendRestRequest("POST", rootUrl(), JSON.stringify(data));
+				}
+
+			}
+
+
+		}
+
+		function sendRestRequest(method, url, data) {
+
+			var responseDIV =  document.getElementById("response");
+			var headersDIV =  document.getElementById("headers");
+			responseDIV.innerHTML = "sending...";
+
+			var xhttp = new XMLHttpRequest();
+			xhttp.onreadystatechange = function() {
+				if (this.readyState == 4 && this.status == 200) {
+					headersDIV.innerHTML = this.getAllResponseHeaders();
+					var displayText = this.responseText;
+					if (this.getAllResponseHeaders().includes("json")) {
+
+						displayText =  "<pre>" + JSON.stringify(JSON.parse(this.responseText), null, 2) + "</pre>";
+					}
+					else if (this.getAllResponseHeaders().includes("xml")) {
+						displayText =  '<textarea rows="20" cols="70" readonly style="border:none; overflow:scroll">' + this.responseText.replace(/&/g, '&amp;')
+										.replace(/</g, '&lt;')
+										.replace(/>/g, '&gt;')
+										.replace(/"/g, '&quot;')
+								+ "</textarea>";
+					}
+					responseDIV.innerHTML =   displayText ;
+				}
+				else {
+					if (this.status == "200") {
+						responseDIV.innerHTML = "please wait..."
+					}
+					else {
+						responseDIV.innerHTML =  "<span style='color:#f00;'> ERROR " + this.status + " " + this.statusText + "</span>" ;
+					}
+				}
+			};
+			xhttp.open(method, url, true);
+
+			var header1include = document.getElementById("header1include").checked;
+			var header2include = document.getElementById("header2include").checked;
+			var header3include = document.getElementById("header3include").checked;
+			var header4include = document.getElementById("header4include").checked;
+
+			var header1key = document.getElementById("header1key").value;
+			var header2key = document.getElementById("header2key").value;
+			var header3key = document.getElementById("header3key").value;
+			var header4key = document.getElementById("header4key").value;
+
+			var header1value = document.getElementById("header1value").value;
+			var header2value = document.getElementById("header2value").value;
+			var header3value = document.getElementById("header3value").value;
+			var header4value = document.getElementById("header4value").value;
+
+			if(header1include === true) xhttp.setRequestHeader(header1key, header1value);
+			if(header2include === true) xhttp.setRequestHeader(header2key, header2value);
+			if(header3include === true) xhttp.setRequestHeader(header3key, header3value);
+			if(header4include === true) xhttp.setRequestHeader(header4key, header4value);
+
+			var userPassInclude = document.getElementById("userPassInclude").checked;
+			var userPassU = document.getElementById("userPassU").value;
+			var userPassP = document.getElementById("userPassP").value;
+			if (userPassInclude === true) {
+				var base64up = btoa(userPassU + ":" + userPassP);
+				xhttp.setRequestHeader("Authorization", "Basic " + base64up);
+			}
+
+			xhttp.send(data);
+			responseDIV.innerHTML = "awaiting response...";
+
+		}
+
+		function showRequiredPayload() {
+			var action = document.getElementById("action").value;
+			var payloadID = document.getElementById("payloadID")
+			var payloadOrderID = document.getElementById("payloadOrderID")
+			var payloadPOST = document.getElementById("payloadPOST")
+			var payloadCountry = document.getElementById("payloadCountry")
+			var payloadGETALL = document.getElementById("payloadGETALL")
+			var payloadPUT = document.getElementById("payloadPUT")
+
+			payloadPOST.style.display = "none";
+			payloadID.style.display = "none";
+			payloadGETALL.style.display = "none";
+			payloadOrderID.style.display = "none";
+			payloadCountry.style.display = "none";
+			payloadPUT.style.display = "none";
+
+			if (action === "GET-ID" || action ==="PUT") {
+				payloadID.style.display = "block";
+			}
+
+			if (action === "GET-ORDER") {
+				payloadOrderID.style.display = "block";
+			}
+
+			if (action === "GET-COUNTRY") {
+				payloadCountry.style.display = "block";
+			}
+
+			if (action === "GETALL") {
+				payloadGETALL.style.display = "block";
+			}
+
+			if (action === "POST" || action ==="PUT") {
+				payloadPOST.style.display = "block";
+			}
+
+			if (action ==="PUT") {
+				payloadPUT.style.display="block";
+			}
+
+		}
+
+	</script>
+
+	<style>
+		label {
+			width: 200px;
+			display: block;
+			float: left;
+		}
+		h4 {
+			margin-top: 40px;
+		}
+	</style>
+
+
+</head>
+
+<body>
+
+<h1>Payment Gateway API Testing Client</h1>
+<h4>Last update: 19 November 2021</h4>
+
+<h3>Instructions</h3>
+<p>The Payment Gateway is a sample Rest application to demonstrate calling a REST api.
+	The system stores data about payments made by customers for their orders.</p>
+</p>
+
+This page can be used to generate a rest request, and it will send it to the server.
+The equivalent CURL command will also be provided.
+</p>
+
+<p>
+	<label for="url">URL</label>
+	<input id="url" value="http://localhost:8080/api/payment" style="width: 400px;"/>
+</p>
+
+<p>
+	<label for="action">Action</label>
+	<select id="action" onChange="showRequiredPayload()">
+		<option value="GETALL">Get a list of all payments (GET)</option>
+		<option value="GET-ID">Get a payment with an id (GET with path param)</option>
+		<option value="GET-ORDER">Get all payments for an orderId (GET with querystring)</option>
+		<option value="GET-COUNTRY">Get all payments with a country (GET with querystring)</option>
+		<option value="POST">New Payment (POST)</option>
+		<option value="PUT">Update Payment (PUT)</option>
+	</select>
+</p>
+
+<h4>Headers</h4>
+<p><em>Tick to include</em>
+<p>
+	<label for="header1key">Key/Value</label>
+	<input type="checkbox" id="header1include" checked />
+	<input id="header1key" value="Accept"/>
+	<input id="header1value" value="application/json"/>
+</p>
+<p>
+	<input type="checkbox" id="header2include" checked />
+	<label for="header2key">Key/Value</label>
+	<input id="header2key" value="Content-Type"/>
+	<input id="header2value" value="application/json"/>
+</p>
+<p>
+	<input type="checkbox" id="header3include" />
+	<label for="header3key">Key/Value</label>
+	<input id="header3key" value=""/>
+	<input id="header3value" value=""/>
+</p>
+<p>
+	<input type="checkbox" id="header4include" />
+	<label for="header4key">Key/Value</label>
+	<input id="header4key" value=""/>
+	<input id="header4value" value=""/>
+</p>
+
+<h4>Response options</h4>
+<p>
+	<label for="includeStatus">Show status in response</label>
+	<input type="checkbox" id="includeStatus" />
+</p>
+<p>
+	<input type="checkbox" id="userPassInclude" />
+	<label for="userPassU">Username and password</label>
+	<input id="userPassU" value=""/>
+	<input id="userPassP" value=""/>
+</p>
+
+
+<h4>Payload</h4>
+
+<div id="payloadID" style="display: none;">
+	<p>
+		<label for="transactionId">Transaction ID</label>
+		<input id="transactionId" value="123"/>
+	</p>
+</div>
+
+<div id="payloadPUT" style="display:none;">
+	<p>For a put to work, provide the transaction ID, and then only the fields that you are changing the value of</p>
+</div>
+
+<div id="payloadPOST" style="display:none;">
+	<p>
+		<label for="newOrderId">Order Id</label>
+		<input id="newOrderId" value="21213456"/>
+	</p>
+
+	<p>
+		<label for="newCountry">Country</label>
+		<input id="newCountry" value="egy"/>
+	</p>
+
+	<p>
+		<label for="newCurrency">Currency</label>
+		<input id="newCurrency" value="USD"/>
+	</p>
+
+	<p>
+		<label for="newAmount">Amount</label>
+		<input id="newAmount" value="35.00"/>
+	</p>
+
+	<p>
+		<label for="newTaxCode">TaxCode</label>
+		<input id="newTaxCode" value="4"/>
+	</p>
+
+	<p>
+		<label for="newTaxRate">Tax Rate</label>
+		<input id="newTaxRate" value="0.00"/>
+	</p>
+
+	<p>
+		<label for="newType">Payment Type</label>
+		<select id="newType">
+			<option value=""></option>
+			<option value="VISA">Visa</option>
+			<option value="MC">Mastercard</option>
+			<option value="MCDEBIT">Mastercard Debit</option>
+			<option value="DELTA">Delta</option>
+			<option value="unknown">Unknown</option>
+		</select>
+	</p>
+
+
+</div>
+
+<div id="payloadGETALL" style="display: none;">
+	<p>
+		No additional data is required for this request
+	</p>
+</div>
+
+<div id="payloadOrderID" style="display: none;">
+	<p>
+		<label for="orderId">Order ID</label>
+		<input id="orderId" value="21213168"/>
+	</p>
+</div>
+
+<div id="payloadCountry" style="display: none;">
+	<p>
+		<label for="country">Country</label>
+		<input id="country" value="egy"/>
+	</p>
+</div>
+
+
+<button style="margin-top:40px;" onClick="generateAPICommand(false);">Generate Curl Command only</button>
+<button style="margin-top:40px;" onClick="generateAPICommand(true);">Generate Curl Command and send to server</button>
+
+<h4>Curl command</h4>
+<textarea id="curl" style="border: 1px solid #000; width: 600px;" rows=10> </textarea>
+
+<h4>Response from server</h4>
+
+<h6>Headers</h6>
+<div id="headers"></div>
+<h6>Response</h6>
+<div id="response" style="border: 1px solid #000; width: 600px; min-height: 100px;"></div>
+</body>
+</HTML>
